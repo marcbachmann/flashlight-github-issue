@@ -1,0 +1,13 @@
+{
+    "user_name": "marcbachmann",
+    "colors": {
+        "default": ["rgb(51,51,51)", "white", "rgb(210,210,210)"]
+    },
+    "user_id": "431376",
+    "aliases": {
+        "engine": "upfrontIO/livingdocs-engine",
+        "api": "upfrontIO/livingdocs-server",
+        "editor": "upfrontIO/livingdocs-editor",
+        "server": "upfrontIO/livingdocs-server"
+    }
+}

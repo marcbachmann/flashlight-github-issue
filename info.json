@@ -1,0 +1,9 @@
+{
+    "name": "ghi",
+    "displayName": "Github Issue",
+    "description": "Github Issue creation",
+    "examples": ["ghi organisation/project awesome issue title labels=bug"],
+    "categories": ["Utilities"],
+    "creator_name": "Marc Bachmann",
+    "creator_url": "https://github.com/marcbachmann/flashlight-ghi"
+}
