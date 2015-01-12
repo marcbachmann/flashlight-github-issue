@@ -1,17 +1,5 @@
 import copy, re, json
 
-#
-# Helper methods
-#
-def read_config():
-    with open('config.json', 'r') as f:
-        return json.load(f)
-
-
-def write_config(data):
-    with open('config.json', 'w') as f:
-        json.dump(data, f)
-
 
 def replace_tokens(html, content):
     if content.get('organisation'): html = html.replace("{{organisation}}", content.get('organisation'))
@@ -30,22 +18,34 @@ def build_html(template, content, config):
     html = replace_tokens(html, content)
     html = html.replace('{{user_id}}', config.get('user_id') or '')
     html = html.replace('{{user_name}}', config.get('user_name') or '')
-    html = html.replace('{{organisation}}', config.get('user_name') or '')
+    html = html.replace('{{organisation}}', config.get('user_name') or '?')
     return html
+
+
+def get_alias(name, aliases):
+    for val in aliases:
+        if val['src'] == name: return val['dst']
+
+
+def get_color(name, colors):
+    for color in colors:
+        if color['name'] == name:
+            return {
+                "color": color.get('color') or "rgb(51,51,51)",
+                "background": color.get('background') or "white",
+                "border": color.get('border') or "transparent"
+            }
 
 
 def build_label_html(labels, config):
     html = ''
     if labels:
-        if not config.has_key('colors'): config['colors'] = {}
+        if not config.has_key('colors'): config['colors'] = []
         for label in labels:
-            if config['colors'].has_key(label):
-                color = config['colors'][label]
-            elif config['colors'].has_key('default'):
-                color = config['colors']['default']
-            else:
-                color = ["rgb(51,51,51)", "white", "rgb(210,210,210)"]
-            style = 'color: %s; background: %s; border-color: %s;' % tuple(color)
+            color = get_color(label, config['colors'])
+            if not color:
+                color = {"color": "rgb(51,51,51)", "background": "white", "border": "rgb(210,210,210)"}
+            style = 'color: %s; background: %s; border-color: %s;' % (color.get('color'), color.get('background'), color.get('border'))
             html += """<li class="label" style="%s"><span class="label-name">%s</span></li>""" % (style, label)
     return html
 
@@ -67,7 +67,9 @@ def parse_query(query, config):
 
     match = re.match('([a-zA-Z0-9\-\._\/]*)\ ?(.*)?', query)
     if match:
-        organisation_and_repository = (config['aliases'].get(match.group(1)) or match.group(1)).split('/', 1)
+        if not config.has_key('aliases'): config['aliases'] = []
+        alias = get_alias(match.group(1), config['aliases']) or match.group(1)
+        organisation_and_repository = alias.split('/', 1)
         if len(organisation_and_repository)>1:
             organisation, repository = organisation_and_repository
         elif len(organisation_and_repository)==1:
@@ -96,106 +98,26 @@ def parse_query(query, config):
     }
 
 
-#
 # Query
-#
-# ghi alias livingdocs-engine=upfrontIO/livingdocs-engine
-# ghi config user=marcbachmann
-# ghi config organisation=upfrontIO
-# ghi upfrontIO/livingdocs-engine test
-ALPHA_NUMERIC_REGEX = '[a-zA-Z0-9\-\._\/]*'
+# ghi upfrontIO/livingdocs-engine Issue title
 def results(params, original_query):
     query = params['~query'] if params.has_key('~query') else ''
-    match = re.match('([a-zA-Z0-9\-\._\/]*)\ ?(.*)?', query)
-    action = match.group(1)
-    config = read_config()
-    if action == 'config':
-        return process_config(match.group(2), config)
-    elif action == 'alias':
-        return process_alias(match.group(2), config)
-    else:
-        return process_create(query, config)
-
-
-def process_alias(query, config):
-    match = re.match('([a-zA-Z0-9\-\._\/]*)=([a-zA-Z0-9\-\._\/]*)', query)
-    res = { "title": "Write alias" }
-
-    if match:
-        dst = match.group(1)
-        src = match.group(2)
-        action = "write" if src else "delete"
-
-        content = {
-            "action": action,
-            "dst": dst,
-            "src": src
-        }
-
-        res["title"] = "%s the alias %s" % (action, dst)
-        res["html"] = build_html('config', content, config)
-        res["run_args"] = ['alias', content, config]
-
-    return res
-
-
-def process_config(query, config):
-    return {
-        "title": "Show config",
-        "run_args": ['config', query, config],
-        "html": build_html('config', config, config)
-    }
-
-
-def process_create(query, config):
     title = 'Create a new issue'
+    config = json.load(open('preferences.json'))
     content = parse_query(query, config)
+
     return {
         'title': title,
-        'run_args': ['create', content, config],
+        'run_args': [content, config],
         'html': build_html('create', content, config),
         'webview_links_open_in_browser': True
     }
 
 
-#
-# Execute
-#
-def run(action, content, config):
-    if action == 'create':
-        return run_create(content, config)
-    elif action == 'alias':
-        return run_alias(content, config)
-    elif action == 'config':
-        return run_config(content, config)
-
-
-def run_create(content, config):
+def run(content, config):
     import subprocess
     url = build_url(content)
     subprocess.call(["""open '%s' """ %(url)], shell=True)
-    # subprocess.call(['echo "'+output+'" | LANG=en_US.UTF-8  pbcopy && osascript -e \'display notification "Copied!" with title "Flashlight"\''], shell=True)
-
-
-def run_alias(content, config):
-    action = content.get('action')
-    key = content.get('dst')
-    if action == 'write':
-        if not config.has_key('aliases'): config['aliases'] = {}
-        config['aliases'][key] = content.get('src')
-        write_config(config)
-
-    else:
-        del config['aliases'][key]
-        write_config(config)
-
-    import subprocess
-    subprocess.call(['osascript -e \'display notification "Alias %s" with title "Flashlight"\'' % (action)], shell=True)
-
-
-def run_config(content, config):
-    import subprocess
-    subprocess.call(['osascript -e \'display notification "Config" with title "Flashlight"\''], shell=True)
 
 
 # test

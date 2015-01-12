@@ -1,9 +1,10 @@
 {
-    "name": "ghi",
+    "name": "github-issue",
     "displayName": "Github Issue",
-    "description": "Github Issue creation",
-    "examples": ["ghi organisation/project awesome issue title labels=bug"],
-    "categories": ["Utilities"],
+    "description": "Create an Issue on Github using Spotlight",
+    "examples": ["ghi organisation/repo awesome issue title labels=bug"],
+    "categories": ["Developer"],
     "creator_name": "Marc Bachmann",
-    "creator_url": "https://github.com/marcbachmann/flashlight-ghi"
+    "creator_url": "https://github.com/marcbachmann/flashlight-github-issue",
+    "openPreferencesOnInstall": true
 }
